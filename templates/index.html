@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Our Anniversary</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Landing Screen -->
+        <section id="landing" class="screen">
+            <div class="landing-content">
+                <h1 class="title">💕 Happy Anniversary 💕</h1>
+                <p class="subtitle">To the one who makes everything beautiful,<br>every single day is a blessing with you.</p>
+                <p class="wish-text">
+                    On this special day, I want you to know that you are my greatest adventure, my deepest love, and my forever home. 
+                    Thank you for choosing to build this beautiful life with me. Every moment, every laugh, and every challenge we've faced together
+                    has made me realize that you are exactly who my heart has always been searching for.
+                </p>
+                <p class="wish-closing">
+                    Happy 4th Anniversary to my soulmate, my best friend, my everything. 💕
+                </p>
+                <button class="btn btn-primary" onclick="startQuiz()">Start Quiz</button>
+            </div>
+        </section>
+
+        <!-- Gallery Screen -->
+        <section id="gallery" class="screen">
+            <div class="header">
+                <h2>Photo Gallery</h2>
+                <button class="back-btn" onclick="navigateTo('landing')">←</button>
+            </div>
+
+            <div class="gallery-display">
+                <div id="gallery-image" class="photo-placeholder" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+                <p id="gallery-caption">First Date</p>
+
+                <div class="gallery-controls">
+                    <button class="btn" id="gallery-prev" onclick="galleryPrev()">← Previous</button>
+                    <button class="btn btn-primary" id="gallery-next" onclick="galleryNext()">Next →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Letters Screen -->
+        <section id="letters" class="screen">
+            <div class="header">
+                <h2>Love Letters</h2>
+                <button class="back-btn" onclick="navigateTo('landing')">←</button>
+            </div>
+            <div class="letters-container">
+                <div class="letter-card">
+                    <h3>To My Dearest Yedhu 💌</h3>
+                    <p>I love you for all the moments we shared togeher every laughter we had and every hardships we faced together. I'm Proud of the man you've became. Love you soo much.</p>
+                    <div class="letter-date">February 2, 2026</div>
+                </div>
+                <div class="letter-card">
+                    <h3>A Promise 🤝</h3>
+                    <p>On the fourth year I promise that I will make sure that we grow in love and I will love you more and more and I will always be there by your side what ever may comes in our way. It will always be us. You are my forever home.</p>
+                    <div class="letter-date">February 2, 2026</div>
+                </div>
+                <div class="letter-card">
+                    <h3>Why I Love You ✨</h3>
+                    <p>You are everything I've ever wanted. You are the answer to my prayers. And I always try to make you happy. You have loved my in every way possible and if I am to choose again I will be you every single timeI won't change a single thing about us. You are the best thing that has ever happened to me and I can't wait to build our home together.</p>
+                    <div class="letter-date">February 2, 2026</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Timeline Screen -->
+        <section id="timeline" class="screen">
+            <div class="header">
+                <h2>Our Timeline</h2>
+                <button class="back-btn" onclick="navigateTo('landing')">←</button>
+            </div>
+            <div class="timeline-container">
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <h4>When We Met</h4>
+                        <p>The day everything changed...</p>
+                        <span class="timeline-date">2020</span>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <h4>Our First Adventure</h4>
+                        <p>Starting a journey together...</p>
+                        <span class="timeline-date">2021</span>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <h4>Making Promises</h4>
+                        <p>Deciding forever together...</p>
+                        <span class="timeline-date">2022</span>
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <h4>Today & Every Day</h4>
+                        <p>Celebrating our love...</p>
+                        <span class="timeline-date">2026</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- Quiz Screen -->
+        <section id="quiz" class="screen">
+            <div class="header">
+                <h2>💑 How Well Do You Know Me? 💑</h2>
+                <button class="back-btn" onclick="navigateTo('landing')">←</button>
+            </div>
+            <div id="quiz-container" class="quiz-container">
+                <!-- Quiz content will be inserted here -->
+            </div>
+        </section>
+
+        <!-- Love Meter Results Screen -->
+        <section id="results" class="screen">
+            <div class="header">
+                <h2>Your Love Score 💖</h2>
+                <button class="back-btn" onclick="navigateTo('landing')">←</button>
+            </div>
+            <div class="results-container">
+                <h3 class="results-heading">How much you love me 💖</h3>
+                <div class="gauge-wrapper">
+                    <canvas id="loveGauge" width="300" height="200"></canvas>
+                </div>
+                <div class="results-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">✓ Correct</span>
+                        <span class="stat-value" id="result-correct">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">✗ Wrong</span>
+                        <span class="stat-value" id="result-wrong">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Percentage</span>
+                        <span class="stat-value" id="result-percentage">0%</span>
+                    </div>
+                </div>
+                <p class="results-message" id="result-message"></p>
+                <button class="btn btn-primary" onclick="navigateTo('final-message')" style="width: 100%; margin-top: 1.5rem;">Continue 💕</button>
+            </div>
+        </section>
+
+        <!-- Final Soulful Message Screen -->
+        <section id="final-message" class="screen">
+            <div class="final-message-content">
+                <div class="message-card">
+                    <h2 class="final-message-title">A Truth About Love 💕</h2>
+                    
+                    <p class="final-message-text">
+                        Of all the reasons I will always love you and I hope you like this. 
+                    </p>
+
+                    <p class="final-message-text">
+                        The truth is, for a fact that you already know everything about me you notice everything, and you've never failed to amaze me. 
+                        You know me in the way you reach for my hand without thinking. You know me in the way you laugh at my jokes, even the bad ones.
+                    </p>
+
+                    <p class="final-message-text">
+                        This quiz was just a playful expression of something much deeper—a celebration of us, of the connection 
+                        we've built, and the person you've chosen to love.
+                    </p>
+
+                    <p class="final-message-text">
+                        Because here's what really matters: you are my greatest adventure, my safest place, my home. 
+                        And I'm grateful that I said yes to you and I'm thankful to you for choosing me.
+                    </p>
+
+                    <p class="final-message-closing">
+                        Happy Anniversary to the one who knows my heart completely. 💕
+                    </p>
+                </div>
+
+                <div class="final-message-footer">
+                    <p class="footer-text">Thank you for this beautiful journey together.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Navigation Menu -->
+        <nav class="navbar">
+            <button class="nav-btn" onclick="navigateTo('landing')" title="Home">🏠</button>
+            <button class="nav-btn" onclick="navigateTo('gallery')" title="Gallery">📸</button>
+            <button class="nav-btn" onclick="navigateTo('letters')" title="Letters">💌</button>
+            <button class="nav-btn" onclick="navigateTo('timeline')" title="Timeline">📅</button>
+        </nav>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
