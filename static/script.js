@@ -445,12 +445,12 @@ window.addEventListener('load', function() {
 
 // Gallery: single-image carousel
 const galleryItems = [
-    { bg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', caption: 'First Date' },
-    { bg: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', caption: 'Vacation Together' },
-    { bg: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', caption: 'Adventure Day' },
-    { bg: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', caption: 'Special Moment' },
-    { bg: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', caption: 'Celebrate Together' },
-    { bg: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)', caption: 'Forever Us' }
+    { src: '/static/images/First Date.jpeg', caption: 'First Date' },
+    { src: '/static/images/First Trip Together.jpeg', caption: 'First Trip Together' },
+    { src: '/static/images/Keep looking at me like that.jpeg', caption: 'Keep looking at me like that' },
+    { src: '/static/images/Pookiee.jpeg', caption: 'Pookie' },
+    { src: '/static/images/Ummahh.jpeg', caption: 'Ummahh' },
+    { src: '/static/images/Will look at you like this forever.jpeg', caption: 'Will look at you like this forever' }
 ];
 
 let galleryIndex = 0;
@@ -466,7 +466,7 @@ function renderGallery() {
     if (!img || !caption) return;
 
     const item = galleryItems[galleryIndex];
-    img.style.background = item.bg;
+    img.style.background = `url('${item.src}') center/cover no-repeat`;
     caption.textContent = item.caption;
 
     // Disable prev button on first, next button on last

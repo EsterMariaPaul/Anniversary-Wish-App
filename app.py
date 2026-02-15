@@ -7,6 +7,8 @@ app = Flask(__name__, template_folder='templates', static_folder='static')
 def index():
     return render_template('index.html')
 
-if __name__ == '__main__':
-    # Change to False and set host='0.0.0.0' to allow external connections
-    app.run(debug=True, host='localhost', port=5000)
+import os
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)

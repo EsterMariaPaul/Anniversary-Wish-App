@@ -207,11 +207,17 @@ body {
 }
 
 .photo-placeholder {
+    width: 10%;
+    aspect-ratio: 4 / 5;   /* 🔥 This sets 4:5 ratio */
+    border-radius: 20px;
+    overflow: hidden;
+    background-position: center;
+    background-size: cover;
+}
+#gallery-img {
     width: 100%;
-    height: 150px;
-    border-radius: 15px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-    transition: all 0.3s ease;
+    height: 100%;
+    object-fit: cover;  /* keeps 4:5 and fills */
 }
 
 .photo-item:hover .photo-placeholder {
