@@ -23,27 +23,29 @@ function navigateTo(screenId) {
     });
 
     // Show selected screen
-    document.getElementById(screenId).classList.add('active');
+    const selectedScreen = document.getElementById(screenId);
+    if (selectedScreen) {
+        selectedScreen.classList.add('active');
+    }
 
-    // Close any open modals
-    closeGame();
-
-    // Initialize quiz if navigating to quiz
     // Hide navbar on final message to prevent further interaction
     const navbar = document.querySelector('.navbar');
     if (navbar) {
         navbar.style.display = (screenId === 'final-message') ? 'none' : 'flex';
     }
 
+    // Handle screen-specific initialization
     if (screenId === 'quiz') {
-        // If quiz not started yet, initialize. Otherwise, resume current question.
-        if (!quizState.totalQuestions || quizState.totalQuestions === 0) {
+        // Only initialize quiz if it hasn't been started yet
+        if (!quizStarted) {
             initMainQuiz();
+            showQuizQuestion();
         } else if (quizState.currentQuestion >= quizState.totalQuestions) {
-            // Quiz finished — show results
+            // Quiz is already finished, show results instead
             navigateTo('results');
+            return;
         } else {
-            // Resume where left off
+            // Resume quiz where left off
             showQuizQuestion();
         }
     }
@@ -55,13 +57,18 @@ function navigateTo(screenId) {
 
     // Update results screen when navigating to results
     if (screenId === 'results') {
-        updateResultsScreen();
+        // Use requestAnimationFrame to ensure DOM has updated
+        requestAnimationFrame(() => {
+            updateResultsScreen();
+        });
     }
 }
 
 // Helper to start quiz from landing (initializes state then navigates)
 function startQuiz() {
+    // Initialize quiz state
     initMainQuiz();
+    // Navigate to quiz screen (which will call showQuizQuestion)
     navigateTo('quiz');
 }
 
@@ -188,6 +195,10 @@ function initQuestionGame(container) {
     showQuestion();
 }
 
+// Global state management
+let quizStarted = false;  // Track if quiz has been initialized
+let loveGaugeChart = null;  // Store chart instance to prevent multiple creations
+
 // Main Quiz Game (Text Input Based)
 let quizState = {
     currentQuestion: 0,
@@ -197,11 +208,11 @@ let quizState = {
     questions: [
         {
             question: "The first movie we watched together?",
-            acceptableAnswers: ['Bheeshmaparvam', 'beeshmaparvam']  // Multiple acceptable answers
+            acceptableAnswers: ['Bheeshmaparvam', 'beeshmaparvam', 'Beeshmaparvam']  // Multiple acceptable answers
         },
         {
             question: "What is my favorite food?",
-            acceptableAnswers: ['Fried rice']
+            acceptableAnswers: ['Fried rice', 'fried rice', 'Fried Rice', 'Friedrice']
         },
         {
             question: "What is my biggest dream of us?",
@@ -209,11 +220,11 @@ let quizState = {
         },
         {
             question: "When did I said I love you first?",
-            acceptableAnswers: ['February 17', 'February 2022', '17/2/2022']
+            acceptableAnswers: ['February 17', 'February 2022', '17/2/2022', 'February 17, 2022', 'February17']
         },
         {
             question: "Where was our first kiss?",
-            acceptableAnswers: ['college']
+            acceptableAnswers: ['college', 'College', 'COLLEGE']
         },
         {
             question: "Where did we go for our first long trip?",
@@ -229,7 +240,7 @@ let quizState = {
         },
         {
             question: "What was the first chocolate brand you bought me?",
-            acceptableAnswers: ['Kit- Kat', 'Kit Kat', 'KitKat']
+            acceptableAnswers: ['Kit- Kat', 'Kit Kat', 'KitKat', 'Kitkat']
         },
         {
             question: "What do you love most about me?",
@@ -239,11 +250,20 @@ let quizState = {
 };
 
 function initMainQuiz() {
+    // Reset quiz state for fresh start
+    quizStarted = true;
     quizState.currentQuestion = 0;
     quizState.correctAnswers = 0;
     quizState.wrongAnswers = 0;
     quizState.totalQuestions = quizState.questions.length;
-    showQuizQuestion();
+
+    // Log state for debugging
+    console.log('Quiz initialized:', {
+        currentQuestion: quizState.currentQuestion,
+        totalQuestions: quizState.totalQuestions,
+        correctAnswers: quizState.correctAnswers,
+        wrongAnswers: quizState.wrongAnswers
+    });
 }
 
 function showQuizQuestion() {
@@ -326,11 +346,9 @@ function submitQuizAnswer() {
 }
 
 function showQuizResults() {
-    quizState.currentQuestion++;
+    // Navigate to results screen
+    // The navigateTo function will handle calling updateResultsScreen()
     navigateTo('results');
-    
-    // Create gauge chart after screen is visible
-    setTimeout(createLoveGauge, 100);
 }
 
 // Close modal when clicking outside
@@ -343,7 +361,11 @@ document.addEventListener('click', function(event) {
 
 // Love Meter Gauge Functions
 function updateResultsScreen() {
-    const percentage = Math.round((quizState.correctAnswers / quizState.totalQuestions) * 100);
+    // Safe percentage calculation to avoid division by zero
+    const percentage = quizState.totalQuestions > 0 
+        ? Math.round((quizState.correctAnswers / quizState.totalQuestions) * 100)
+        : 0;
+    
     let message = '';
 
     if (percentage === 100) {
@@ -359,28 +381,44 @@ function updateResultsScreen() {
     }
 
     // Update results display
-    document.getElementById('result-correct').textContent = quizState.correctAnswers;
-    document.getElementById('result-wrong').textContent = quizState.wrongAnswers;
-    document.getElementById('result-percentage').textContent = percentage + '%';
-    document.getElementById('result-message').textContent = message;
+    const correctEl = document.getElementById('result-correct');
+    const wrongEl = document.getElementById('result-wrong');
+    const percentageEl = document.getElementById('result-percentage');
+    const messageEl = document.getElementById('result-message');
 
-    // Create the gauge chart
-    createLoveGauge();
+    if (correctEl) correctEl.textContent = quizState.correctAnswers;
+    if (wrongEl) wrongEl.textContent = quizState.wrongAnswers;
+    if (percentageEl) percentageEl.textContent = percentage + '%';
+    if (messageEl) messageEl.textContent = message;
+
+    // Create the gauge chart after short delay to ensure rendering
+    setTimeout(() => {
+        createLoveGauge(percentage);
+    }, 50);
 }
 
-function createLoveGauge() {
+function createLoveGauge(percentage) {
     const ctx = document.getElementById('loveGauge');
-    if (!ctx) return;
+    if (!ctx) {
+        console.warn('Love gauge canvas element not found');
+        return;
+    }
 
-    const percentage = Math.round((quizState.correctAnswers / quizState.totalQuestions) * 100);
+    // Recalculate percentage if not provided (for safety)
+    if (percentage === undefined) {
+        percentage = quizState.totalQuestions > 0
+            ? Math.round((quizState.correctAnswers / quizState.totalQuestions) * 100)
+            : 0;
+    }
 
-    // Destroy existing chart if it exists
-    if (window.loveGaugeChart && typeof window.loveGaugeChart.destroy === 'function') {
-        window.loveGaugeChart.destroy();
+    // Destroy existing chart instance to prevent conflicts
+    if (loveGaugeChart && typeof loveGaugeChart.destroy === 'function') {
+        loveGaugeChart.destroy();
+        loveGaugeChart = null;
     }
 
     // Create doughnut gauge chart
-    window.loveGaugeChart = new Chart(ctx, {
+    loveGaugeChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: ['Love Score', 'Remaining'],
@@ -418,21 +456,21 @@ function createLoveGauge() {
             beforeDatasetsDraw(chart) {
                 const { width } = chart;
                 const { height } = chart;
-                const { ctx } = chart;
-                ctx.restore();
+                const { ctx: canvasCtx } = chart;
+                canvasCtx.restore();
 
                 const fontSize = (height / 200).toFixed(2);
-                ctx.font = `${fontSize * 24}px Arial`;
-                ctx.textBaseline = 'middle';
-                ctx.fillStyle = '#667eea';
-                ctx.fontWeight = 'bold';
+                canvasCtx.font = `${fontSize * 24}px Arial`;
+                canvasCtx.textBaseline = 'middle';
+                canvasCtx.fillStyle = '#667eea';
+                canvasCtx.fontWeight = 'bold';
 
                 const text = `${percentage}%`;
-                const textX = Math.round((width - ctx.measureText(text).width) / 2);
+                const textX = Math.round((width - canvasCtx.measureText(text).width) / 2);
                 const textY = height / 2 + 10;
 
-                ctx.fillText(text, textX, textY);
-                ctx.save();
+                canvasCtx.fillText(text, textX, textY);
+                canvasCtx.save();
             }
         }]
     });
