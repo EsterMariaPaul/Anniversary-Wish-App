@@ -243,8 +243,8 @@ let quizState = {
             acceptableAnswers: ['Kit- Kat', 'Kit Kat', 'KitKat', 'Kitkat']
         },
         {
-            question: "What do you love most about me?",
-            acceptableAnswers: ['smile', 'heart', 'kindness', 'laugh', 'humor']
+            question: "When did you say 'I love you first'?",
+            acceptableAnswers: ['February 15', 'February 2022', '15/2/2022', 'February 15, 2022', 'February15']
         }
     ]
 };
@@ -361,10 +361,23 @@ document.addEventListener('click', function(event) {
 
 // Love Meter Gauge Functions
 function updateResultsScreen() {
-    // Safe percentage calculation to avoid division by zero
-    const percentage = quizState.totalQuestions > 0 
-        ? Math.round((quizState.correctAnswers / quizState.totalQuestions) * 100)
-        : 0;
+    // Safety: ensure totalQuestions is set (in case initMainQuiz wasn't called)
+    if (!quizState.totalQuestions || quizState.totalQuestions === 0) {
+        quizState.totalQuestions = Array.isArray(quizState.questions) ? quizState.questions.length : 0;
+    }
+
+    // Safe percentage calculation to avoid division by zero and NaN
+    let percentage = 0;
+    if (quizState.totalQuestions > 0) {
+        const raw = (Number(quizState.correctAnswers) || 0) / Number(quizState.totalQuestions);
+        percentage = Number.isFinite(raw) ? Math.round(raw * 100) : 0;
+    }
+
+    // Diagnostic log (visible in browser console) to help debugging
+    console.log('[updateResultsScreen] correct=', quizState.correctAnswers, 'total=', quizState.totalQuestions, 'computedPct=', percentage);
+    
+    // On-page debug visibility (remove this in production if needed)
+    console.warn(`RESULTS: ${quizState.correctAnswers} correct out of ${quizState.totalQuestions}. Percentage = ${percentage}%`);
     
     let message = '';
 
@@ -380,100 +393,345 @@ function updateResultsScreen() {
         message = "No worries! This is a fun reminder to learn more about each other! 💕";
     }
 
-    // Update results display
+    // Update stat counters and message ONLY (no percentages yet - those animate)
     const correctEl = document.getElementById('result-correct');
     const wrongEl = document.getElementById('result-wrong');
     const percentageEl = document.getElementById('result-percentage');
+    const gaugePercentageEl = document.getElementById('gauge-percentage');
     const messageEl = document.getElementById('result-message');
 
     if (correctEl) correctEl.textContent = quizState.correctAnswers;
     if (wrongEl) wrongEl.textContent = quizState.wrongAnswers;
-    if (percentageEl) percentageEl.textContent = percentage + '%';
     if (messageEl) messageEl.textContent = message;
 
-    // Create the gauge chart after short delay to ensure rendering
-    setTimeout(() => {
-        createLoveGauge(percentage);
-    }, 50);
+    // Initialize percentage elements to 0 for animation (do NOT set to final value yet)
+    if (percentageEl) {
+        percentageEl.textContent = '0%';
+        percentageEl.classList.add('counting');
+    }
+    if (gaugePercentageEl) {
+        gaugePercentageEl.textContent = '0%';
+        gaugePercentageEl.classList.add('counting');
+    }
+
+    // Create chart at 0% (not final percentage)
+    createLoveGauge(0);
+
+    // Force reflow to ensure DOM paint happens before animation
+    // This ensures the chart is rendered before we start animating it
+    void document.documentElement.offsetHeight;
+
+    // Now start animation with a fresh frame
+    requestAnimationFrame(() => {
+        animateGaugeAndPercentage(percentage);
+    });
 }
 
-function createLoveGauge(percentage) {
-    const ctx = document.getElementById('loveGauge');
-    if (!ctx) {
-        console.warn('Love gauge canvas element not found');
+// Create (once) or update Chart.js doughnut for the love gauge.
+function createLoveGauge(initialPercentage = 0) {
+    const canvas = document.getElementById('loveGauge');
+    if (!canvas) {
+        console.error('[createLoveGauge] Canvas element #loveGauge not found!');
         return;
     }
 
-    // Recalculate percentage if not provided (for safety)
-    if (percentage === undefined) {
-        percentage = quizState.totalQuestions > 0
-            ? Math.round((quizState.correctAnswers / quizState.totalQuestions) * 100)
-            : 0;
+    console.log('[createLoveGauge] Canvas found, initialPercentage=', initialPercentage);
+
+    const ctx = canvas.getContext('2d');
+
+    // If chart already exists, update and reinitialize
+    if (loveGaugeChart) {
+        console.log('[createLoveGauge] Chart exists, resetting to', initialPercentage);
+        loveGaugeChart.data.datasets[0].data = [initialPercentage, 100 - initialPercentage];
+        // Disable Chart.js animation while we control the animation loop
+        loveGaugeChart.options.animation = loveGaugeChart.options.animation || {};
+        loveGaugeChart.options.animation.duration = 0;
+        loveGaugeChart.update();
+        return;
     }
 
-    // Destroy existing chart instance to prevent conflicts
-    if (loveGaugeChart && typeof loveGaugeChart.destroy === 'function') {
-        loveGaugeChart.destroy();
-        loveGaugeChart = null;
-    }
-
-    // Create doughnut gauge chart
-    loveGaugeChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Love Score', 'Remaining'],
-            datasets: [{
-                data: [percentage, 100 - percentage],
-                backgroundColor: [
-                    'rgba(102, 126, 234, 1)',
-                    'rgba(200, 200, 200, 0.3)'
-                ],
-                borderColor: [
-                    'rgba(102, 126, 234, 1)',
-                    'rgba(200, 200, 200, 0.3)'
-                ],
-                borderWidth: 0,
-                borderRadius: [10, 10]
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            circumference: 180,
-            rotation: 270,
-            cutout: '75%',
-            plugins: {
-                legend: {
-                    display: false
+    // Create a single chart instance (we will update its data during animation)
+    try {
+        loveGaugeChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Love Score', 'Remaining'],
+                datasets: [{
+                    data: [initialPercentage, 100 - initialPercentage],
+                    backgroundColor: [
+                        'rgb(173, 23, 23)',
+                        'rgba(200, 200, 200, 0.25)'
+                    ],
+                    borderColor: ['rgba(255,255,255,0.0)', 'rgba(200,200,200,0.0)'],
+                    borderWidth: 0,
+                    borderRadius: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                circumference: 180,
+                rotation: 270,
+                cutout: '75%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false }
                 },
-                tooltip: {
-                    enabled: false
-                }
+                animation: { duration: 0 }
             }
-        },
-        plugins: [{
-            id: 'textCenter',
-            beforeDatasetsDraw(chart) {
-                const { width } = chart;
-                const { height } = chart;
-                const { ctx: canvasCtx } = chart;
-                canvasCtx.restore();
+        });
+        console.log('[createLoveGauge] Chart created successfully');
+    } catch (e) {
+        console.error('[createLoveGauge] Error creating chart:', e);
+    }
+}
 
-                const fontSize = (height / 200).toFixed(2);
-                canvasCtx.font = `${fontSize * 24}px Arial`;
-                canvasCtx.textBaseline = 'middle';
-                canvasCtx.fillStyle = '#667eea';
-                canvasCtx.fontWeight = 'bold';
+// Animation helpers & state
+let _gaugeAnimFrame = null;
+let _confettiAnimFrame = null;
 
-                const text = `${percentage}%`;
-                const textX = Math.round((width - canvasCtx.measureText(text).width) / 2);
-                const textY = height / 2 + 10;
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
 
-                canvasCtx.fillText(text, textX, textY);
-                canvasCtx.save();
+// Animate both the gauge chart and the percentage text using requestAnimationFrame.
+function animateGaugeAndPercentage(finalPercentage) {
+    const percentageEl = document.getElementById('result-percentage');
+    const gaugePercentageEl = document.getElementById('gauge-percentage');
+    const gaugeWrapper = document.querySelector('.gauge-wrapper');
+
+    console.log('[animateGaugeAndPercentage] Called with finalPercentage=', finalPercentage);
+
+    // Safety check: elements and chart must exist
+    if (!percentageEl || !gaugePercentageEl || !gaugeWrapper || !loveGaugeChart) {
+        console.error('[animateGaugeAndPercentage] Missing elements:', {
+            percentageEl: !!percentageEl,
+            gaugePercentageEl: !!gaugePercentageEl,
+            gaugeWrapper: !!gaugeWrapper,
+            loveGaugeChart: !!loveGaugeChart
+        });
+        // Fallback: set values directly and trigger confetti anyway
+        if (percentageEl) percentageEl.textContent = finalPercentage + '%';
+        if (gaugePercentageEl) gaugePercentageEl.textContent = finalPercentage + '%';
+        startConfetti(2200);
+        return;
+    }
+
+    // Cancel any in-progress animation
+    if (_gaugeAnimFrame) {
+        cancelAnimationFrame(_gaugeAnimFrame);
+    }
+
+    // Start heartbeat and glow immediately
+    const minDur = 0.35; // seconds (fast for high scores)
+    const maxDur = 1.15; // seconds (slow for low scores)
+    const pulseDuration = (maxDur - (finalPercentage / 100) * (maxDur - minDur)).toFixed(2) + 's';
+    gaugeWrapper.style.setProperty('--pulse-duration', pulseDuration);
+    gaugeWrapper.classList.add('pulsing');
+    gaugeWrapper.classList.add('glow');
+    console.log('[animateGaugeAndPercentage] Pulse duration set to', pulseDuration);
+
+    // Animation timing: longer animations for longer to see the effect
+    const minTime = 1000; // ms (minimum duration)
+    const maxTime = 2500; // ms (maximum duration)
+    const totalDuration = Math.max(minTime, Math.round(minTime + (finalPercentage / 100) * (maxTime - minTime)));
+    console.log('[animateGaugeAndPercentage] Total animation duration:', totalDuration, 'ms');
+
+    let start = null;
+    let lastRendered = -1;
+    let animationComplete = false;
+
+    function step(timestamp) {
+        // Initialize start time on first frame
+        if (!start) {
+            start = timestamp;
+            console.log('[Animation Step] Starting animation at timestamp', start);
+        }
+
+        const elapsed = timestamp - start;
+        const progress = Math.min(1, elapsed / totalDuration);
+        const eased = easeOutCubic(progress);
+        const current = Math.round(eased * finalPercentage);
+
+        console.log('[Animation Frame] progress=', progress.toFixed(2), 'current=', current, 'lastRendered=', lastRendered);
+
+        // Update DOM for every frame (not just when value changes) to ensure animation is visible
+        if (current !== lastRendered || lastRendered === -1 && elapsed % 16 < 8) {
+            // Update both percentage displays
+            if (percentageEl) {
+                percentageEl.textContent = current + '%';
+                percentageEl.classList.add('counting');
+                // Remove after brief delay to re-trigger if needed
+                setTimeout(() => {
+                    if (percentageEl) percentageEl.classList.remove('counting');
+                }, 150);
             }
-        }]
-    });
+
+            if (gaugePercentageEl) {
+                gaugePercentageEl.textContent = current + '%';
+                gaugePercentageEl.classList.add('counting');
+                // Remove after brief delay to re-trigger if needed
+                setTimeout(() => {
+                    if (gaugePercentageEl) gaugePercentageEl.classList.remove('counting');
+                }, 150);
+            }
+
+            lastRendered = current;
+            console.log('[Animation DOM Update] Updated to', current + '%');
+        }
+
+        // Update chart dataset without Chart.js animations
+        if (loveGaugeChart) {
+            loveGaugeChart.options.animation = loveGaugeChart.options.animation || {};
+            loveGaugeChart.options.animation.duration = 0;
+            loveGaugeChart.data.datasets[0].data = [current, Math.max(0, 100 - current)];
+            loveGaugeChart.update('none');
+        }
+
+        // Continue animation until progress reaches 100%
+        if (progress < 1) {
+            _gaugeAnimFrame = requestAnimationFrame(step);
+        } else {
+            // Animation complete: finalize and cleanup
+            console.log('[Animation] Progress reached 100%, calling finalize');
+            finalize();
+        }
+    }
+
+    function finalize() {
+        if (animationComplete) return; // Prevent double-finalize
+        animationComplete = true;
+
+        console.log('[Animation Finalize] Starting finalization. Final percentage=', finalPercentage);
+
+        // Set final values explicitly
+        if (percentageEl) percentageEl.textContent = finalPercentage + '%';
+        if (gaugePercentageEl) gaugePercentageEl.textContent = finalPercentage + '%';
+
+        // Update chart to final state
+        if (loveGaugeChart) {
+            loveGaugeChart.data.datasets[0].data = [finalPercentage, 100 - finalPercentage];
+            loveGaugeChart.update();
+            console.log('[Animation Finalize] Chart updated to final state:', finalPercentage);
+        }
+
+        // Remove pulsing, keep glow briefly
+        gaugeWrapper.classList.remove('pulsing');
+
+        // Fade out glow after 1s
+        setTimeout(() => {
+            gaugeWrapper.classList.remove('glow');
+        }, 1000);
+
+        // Clean up animation frame reference
+        if (_gaugeAnimFrame) {
+            cancelAnimationFrame(_gaugeAnimFrame);
+            _gaugeAnimFrame = null;
+        }
+
+        // Trigger confetti celebration (this MUST happen)
+        console.log('[Animation Finalize] Triggering confetti');
+        startConfetti(2200);
+
+        console.log('[Animation Complete] Final percentage=', finalPercentage, '%');
+    }
+
+    // Safety timeout: if animation doesn't complete in reasonable time, force finalize
+    const safetyTimeout = setTimeout(() => {
+        if (!animationComplete) {
+            console.warn('[Animation Safety] Animation timeout reached, forcing finalize');
+            finalize();
+        }
+    }, totalDuration + 500); // 500ms grace period
+
+    // Start animation loop
+    _gaugeAnimFrame = requestAnimationFrame(step);
+    console.log('[animateGaugeAndPercentage] Animation started. Target %=', finalPercentage, 'Duration=', totalDuration, 'ms');
+}
+
+// Simple canvas confetti implementation (lightweight, no external libs)
+function startConfetti(duration = 2000) {
+    const container = document.querySelector('.gauge-wrapper');
+    if (!container) {
+        console.error('[startConfetti] gauge-wrapper container not found!');
+        return;
+    }
+
+    console.log('[startConfetti] Creating confetti with duration', duration);
+
+    // Create canvas overlay
+    const canvas = document.createElement('canvas');
+    canvas.className = 'confetti-canvas';
+    canvas.style.position = 'absolute';
+    canvas.style.left = 0;
+    canvas.style.top = 0;
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.pointerEvents = 'none';
+    canvas.style.zIndex = '9999';
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    container.appendChild(canvas);
+
+    console.log('[startConfetti] Canvas created, size:', canvas.width, 'x', canvas.height);
+
+    const ctx = canvas.getContext('2d');
+    const pieces = [];
+    const count = Math.min(80, 10 + Math.round(canvas.width / 10));
+
+    // Create confetti pieces
+    for (let i = 0; i < count; i++) {
+        pieces.push({
+            x: Math.random() * canvas.width,
+            y: -Math.random() * canvas.height,
+            r: 6 + Math.random() * 6,
+            color: `hsl(${Math.floor(Math.random() * 360)}, 75%, 60%)`,
+            velX: (Math.random() - 0.5) * 1.8,
+            velY: 2 + Math.random() * 4,
+            rot: Math.random() * 360,
+            drag: 0.995
+        });
+    }
+
+    console.log('[startConfetti] Created', pieces.length, 'confetti pieces');
+
+    let start = performance.now();
+    let confetti_finished = false;
+
+    function confettiStep(now) {
+        const elapsed = now - start;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        pieces.forEach(p => {
+            p.x += p.velX;
+            p.y += p.velY;
+            p.velY *= p.drag;
+            p.rot += 6;
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate((p.rot * Math.PI) / 180);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-p.r / 2, -p.r / 2, p.r, p.r * 0.6);
+            ctx.restore();
+        });
+
+        if (elapsed < duration) {
+            _confettiAnimFrame = requestAnimationFrame(confettiStep);
+        } else {
+            // Confetti complete: cleanup
+            if (!confetti_finished) {
+                confetti_finished = true;
+                canvas.remove();
+                if (_confettiAnimFrame) cancelAnimationFrame(_confettiAnimFrame);
+                _confettiAnimFrame = null;
+                console.log('[startConfetti] Confetti animation ended, canvas removed');
+            }
+        }
+    }
+
+    // Cancel any existing confetti animation
+    if (_confettiAnimFrame) cancelAnimationFrame(_confettiAnimFrame);
+    _confettiAnimFrame = requestAnimationFrame(confettiStep);
+    console.log('[startConfetti] Animation loop started');
 }
 
 // Initialize - show landing screen

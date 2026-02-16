@@ -34,12 +34,15 @@ body {
 
 /* Landing Screen */
 #landing {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+#landing.active {
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
 }
 
 .landing-content {
@@ -766,6 +769,66 @@ body {
     height: auto;
 }
 
+/* Pulse / Heartbeat animation for gauge while animating */
+@keyframes heartbeat {
+    0% { transform: scale(1); box-shadow: 0 0 8px rgba(255, 100, 120, 0.12); }
+    25% { transform: scale(1.06); box-shadow: 0 0 18px rgba(255, 100, 120, 0.18); }
+    50% { transform: scale(1); box-shadow: 0 0 8px rgba(255, 100, 120, 0.12); }
+    75% { transform: scale(1.06); box-shadow: 0 0 18px rgba(255, 100, 120, 0.18); }
+    100% { transform: scale(1); box-shadow: 0 0 8px rgba(255, 100, 120, 0.12); }
+}
+
+.gauge-wrapper {
+    position: relative; /* needed for confetti canvas overlay */
+}
+
+.gauge-wrapper.pulsing canvas {
+    transform-origin: center center;
+    animation: heartbeat var(--pulse-duration, 1s) ease-in-out infinite;
+}
+
+.gauge-wrapper.glow {
+    box-shadow: 0 6px 30px rgba(255, 100, 120, 0.12);
+    transition: box-shadow 0.35s ease;
+}
+
+/* Percentage text below the gauge */
+#result-percentage {
+    display: block;
+    text-align: center;
+    font-size: 1.8rem;
+    margin-top: 0.6rem;
+    transition: transform 0.22s ease, opacity 0.15s ease;
+}
+
+#result-percentage.counting {
+    transform: scale(1.08);
+}
+
+/* Large percentage displayed directly under the gauge */
+.gauge-percentage {
+    text-align: center;
+    color: #e23b3b; /* red color requested */
+    font-size: 2.25rem;
+    font-weight: 700;
+    margin-top: 0.6rem;
+    transition: transform 0.18s ease, opacity 0.12s ease;
+}
+
+.gauge-percentage.counting {
+    transform: scale(1.06);
+}
+
+/* Confetti canvas styles */
+.confetti-canvas {
+    pointer-events: none;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+}
+
 .results-stats {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -812,11 +875,14 @@ body {
 #final-message {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
+    padding: 2rem;
+}
+
+#final-message.active {
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    padding: 2rem;
 }
 
 .final-message-content {
